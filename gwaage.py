@@ -23,58 +23,48 @@ def countwords(text):
 	
 	return dc
 
-def choose_word_by_frequency(text):
-	chosenword = sorted(countwords(text.lower()).items(), key=lambda x: x[1])[-1]
-	uprint(u'chosen word: {w}, occurences: {o}'.format(w=chosenword[0], o=chosenword[1]))
-	return chosenword[0]
-
-def highest_gradient(occurrences):
-	last = [0]
-	def get_difference(occ):
-		diff = abs(last[0] - occ)
-		last[0] = occ
-		return diff
-
-	return max(map(get_difference, occurrences))
-
-def choose_word_by_weighted_gradient(wdict, text):
-	wcount = countwords(text.lower())
-	weightedgrad = { 
-		key:float(highest_gradient(val))/wcount[key] for key,val in wdict.items() }
-	chosenword = sorted(weightedgrad.items(), key=lambda x: x[1])[-1]
-	uprint(u'chosen word: {w}, weight: {o}'.format(w=chosenword[0], o=chosenword[1]))
-	return chosenword[0]
-
-def choose_word_by_gradient(wdict):
-	wgrad = { key:highest_gradient(val) for key,val in wdict.items() }
-	chosenword = sorted(wgrad.items(), key=lambda x: x[1])[-1]
-	uprint(u'chosen word: {w}, maxgradient: {o}'.format(w=chosenword[0], o=chosenword[1]))
-	return chosenword[0]
+def get_weighted_frequencies(freqs_per_word, text, windowwidth):
+	wweight = {}
+	print('adding weights...')
+	for word,freq_per_window in freqs_per_word.items():
+		freqsum = sum(freq_per_window)
+		wweight[word] = []
+		for freq in freq_per_window:
+			weight = float(windowwidth)/pow(freqsum,1)
+			wweight[word].append((freq-1)*weight)
+	
+	return wweight
 
 def analyzetext(text, wlen, steplen):
+	print('analyzing...')
+
 	splittext = text.lower().split()
 	wdict = { word:[] for word in collectwords(text.lower()) }
-
+	
 	for i in xrange(0, wlen+len(splittext), steplen):
 		window = splittext[max(i-wlen,0):i]
+		print "\r{p}%".format(p=int(float(i)/(wlen+len(splittext))*100)),
+		sys.stdout.flush()
 		for w, d in wdict.items():
 			d.append(window.count(w))
+	print()
 	return wdict
 
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(
 	        description='zaehlt vorkomnisse des wortes')
-	parser.add_argument('textfile')
 	parser.add_argument('command', choices=['list', 'analyze'])
+	parser.add_argument('textfile')
 	parser.add_argument('-w', '--word')
-	parser.add_argument('-l', '--wlength', default=20, type=int)
-	parser.add_argument('-s', '--steplen', default=12, type=int)
+	parser.add_argument('-l', '--wlength', default=10, type=int)
+	parser.add_argument('-s', '--steplen', default=1, type=int)
 	args = parser.parse_args()
 
 	if args.steplen >= args.wlength:
 		raise ValueError('window length must be greater than step width')
 	
 	text = codecs.open(args.textfile, encoding='utf-8').read()
+	print('cleaning...')
 	cleantext = re.sub(u'[^a-zA-Z\xdc\xfc\xe4\xc4\xf6\xd6\n ]',u'',text)
 	if args.command == 'analyze':
 
@@ -83,11 +73,23 @@ if __name__ == '__main__':
 				args.wlength,
 				args.steplen)
 		
-		word_to_analyze = (args.word.lower() 
-			if args.word else choose_word_by_gradient(wdict, cleantext))
-			
-		for i,v in enumerate(wdict[word_to_analyze]):
-			uprint(str(i)+':'+'#'*v)
+		weighted_frequency_per_word = get_weighted_frequencies(wdict, cleantext, args.wlength)
+		
+		if args.word:
+			uprint(u'{f}'.format(f=weighted_frequency_per_word[args.word]))
+		else:
+			print('creating word-and-weight-list...')
+			weight_word_list = []
+			for word,freqs in weighted_frequency_per_word.items():
+				for freq in freqs:
+					if freq > 0:
+						weight_word_list.append((word,freq))
+	
+			print('sorting list...')
+			sorted_ww_list = sorted(weight_word_list, key=lambda x: x[1])		
+
+			for word,freq in sorted_ww_list[-5:]:
+				uprint(u'{w},{f}'.format(w=word, f=freq))
 	elif args.command == 'list':
 		words = collectwords(cleantext)
 		
