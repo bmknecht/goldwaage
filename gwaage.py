@@ -26,13 +26,23 @@ def countwords(text):
 
 def get_weighted_frequencies(freqs_per_word, text, windowwidth):
 	wweight = {}
+#	debugdict = {}
 	print('adding weights...')
 	for word,freq_per_window in freqs_per_word.items():
 		freqsum = sum(freq_per_window)
 		wweight[word] = []
-		for freq in freq_per_window:
-			weight = float(windowwidth)/freqsum
-			wweight[word].append((freq-1)*weight)
+#		debugdict[word] = [ 0, 0, 0, 0 ]
+		for i,freq in enumerate(freq_per_window):
+			average_freq = (freqsum-freq)/float(len(freq_per_window))
+			weight = float(windowwidth)/freqsum*0.4+0.8
+			wweight[word].append((freq-1)*pow(weight,5))
+#			if wweight[word][-1] > debugdict[word][0]:
+#				debugdict[word] = [ round(wweight[word][-1],3), round(average_freq,3),
+#					round(freq,3), round(weight,3), text.split()[i-windowwidth:i] ]
+	
+#	for word in [ 'und', 'schicksal', 'entschuldigung' ]:
+#		print(str(word) + ':' + str(debugdict[word][:-1]))
+#		print(u' '.join(debugdict[word][-1]))
 	
 	return wweight
 
@@ -66,7 +76,7 @@ if __name__ == '__main__':
 	parser.add_argument('command', choices=['list', 'analyze', 'full'])
 	parser.add_argument('textfile')
 	parser.add_argument('-w', '--word')
-	parser.add_argument('-l', '--wlength', default=10, type=int)
+	parser.add_argument('-l', '--wlength', default=30, type=int)
 	parser.add_argument('-s', '--steplen', default=1, type=int)
 	args = parser.parse_args()
 
@@ -75,7 +85,7 @@ if __name__ == '__main__':
 	
 	text = codecs.open(args.textfile, encoding='utf-8').read()
 	print('cleaning...')
-	cleantext = re.sub(u'[^a-zA-Z\xdc\xfc\xe4\xc4\xf6\xd6\n ]',u'',text)
+	cleantext = re.sub(u'[^a-zA-Z\xdc\xfc\xe4\xc4\xf6\xd6\xdf\n ]',u' ',text)
 
 	if args.command == 'analyze':
 		weighted_frequency_per_word = analyzetext(cleantext, args.wlength, args.steplen)
