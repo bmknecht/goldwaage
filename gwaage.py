@@ -3,6 +3,7 @@ import codecs
 import sys
 import argparse
 import re
+from goldwaage import output
 
 def uprint(text):
 	if isinstance(text, unicode):
@@ -30,12 +31,12 @@ def get_weighted_frequencies(freqs_per_word, text, windowwidth):
 		freqsum = sum(freq_per_window)
 		wweight[word] = []
 		for freq in freq_per_window:
-			weight = float(windowwidth)/pow(freqsum,1)
+			weight = float(windowwidth)/freqsum
 			wweight[word].append((freq-1)*weight)
 	
 	return wweight
 
-def analyzetext(text, wlen, steplen):
+def get_frequencies_per_word(text, wlen, steplen):
 	print('analyzing...')
 
 	splittext = text.lower().split()
@@ -50,10 +51,19 @@ def analyzetext(text, wlen, steplen):
 	print()
 	return wdict
 
+def analyzetext(cleantext, wlength, steplen):
+	wdict = get_frequencies_per_word(
+			cleantext,
+			wlength,
+			steplen)
+	
+	return get_weighted_frequencies(wdict, cleantext, wlength)
+	
+
 if __name__ == '__main__':
 	parser = argparse.ArgumentParser(
 	        description='zaehlt vorkomnisse des wortes')
-	parser.add_argument('command', choices=['list', 'analyze'])
+	parser.add_argument('command', choices=['list', 'analyze', 'full'])
 	parser.add_argument('textfile')
 	parser.add_argument('-w', '--word')
 	parser.add_argument('-l', '--wlength', default=10, type=int)
@@ -66,15 +76,10 @@ if __name__ == '__main__':
 	text = codecs.open(args.textfile, encoding='utf-8').read()
 	print('cleaning...')
 	cleantext = re.sub(u'[^a-zA-Z\xdc\xfc\xe4\xc4\xf6\xd6\n ]',u'',text)
-	if args.command == 'analyze':
 
-		wdict = analyzetext(
-				cleantext,
-				args.wlength,
-				args.steplen)
-		
-		weighted_frequency_per_word = get_weighted_frequencies(wdict, cleantext, args.wlength)
-		
+	if args.command == 'analyze':
+		weighted_frequency_per_word = analyzetext(cleantext, args.wlength, args.steplen)
+
 		if args.word:
 			uprint(u'{f}'.format(f=weighted_frequency_per_word[args.word]))
 		else:
@@ -90,10 +95,13 @@ if __name__ == '__main__':
 
 			for word,freq in sorted_ww_list[-5:]:
 				uprint(u'{w},{f}'.format(w=word, f=freq))
+	elif args.command == 'full':
+		weighted_frequency_per_word = analyzetext(cleantext, args.wlength, args.steplen)
+		output.generatehtml(weighted_frequency_per_word, text)
+
 	elif args.command == 'list':
 		words = collectwords(cleantext)
 		
 		for w in sorted(words, key=unicode.lower):
 			uprint(w) 
-		
 
