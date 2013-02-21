@@ -2,6 +2,7 @@
 
 *~
 *.html
+*.komodoproject
 texte
 
 # C extensions
