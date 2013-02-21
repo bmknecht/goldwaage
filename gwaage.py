@@ -5,7 +5,7 @@ of multiple words by approximity'''
 import argparse
 
 
-from goldwaage import analyze, output, parser
+from goldwaage import analyze, output, parser, events
 
 
 def uprint(text):
@@ -49,10 +49,20 @@ def processarguments(cleantext, args):
 
 def _main():
     '''main function for direct execution'''
-    args = parsearguments()
-    cleantext, _ = parser.readtext(args)
 
-    processarguments(cleantext, args)
+    args = parsearguments()
+    #cleantext, _ = parser.readtext(args)
+    #processarguments(cleantext, args)
+    event_dispatcher = events.EventDispatcher()
+    word_collector = analyze.WordOccurrenceCollector()
+    frequency_calculator = analyze.WeightedFrequenciesCalculator(
+        word_collector, args.wlength)
+    event_dispatcher.register_listener(parser.WordFound, word_collector)
+    event_dispatcher.register_listener(
+        parser.ParsingFinished, frequency_calculator)
+
+    parser.parsetext(args, event_dispatcher)
+    output.generatehtml(frequency_calculator.words_and_weights)
 
 
 if __name__ == '__main__':

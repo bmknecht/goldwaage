@@ -3,19 +3,31 @@
 import codecs
 import re
 
+from goldwaage import events
 
-def readtext(args):
-    '''returns parseable text
 
-    reads unicode text from file and returns it and a second version of it
-    which is stripped of all special characters, numbers,...
+class WordFound(events.Event):
+    '''event: found a word'''
+    def __init__(self, word):
+        self.word = word
 
-    '''
-    text = codecs.open(args.textfile, encoding='utf-8').read()
-    print('cleaning...')
+
+class ParsingFinished(events.Event):
+    '''signals end of parsing process'''
+    pass
+
+
+def _generate_parse_events(text, event_dispatcher):
     cleantext = re.sub(u'[^a-zA-Z\xdc\xfc\xe4\xc4\xf6\xd6\xdf\n ]', u' ', text)
+    for word in cleantext.split():
+        event_dispatcher.fire_event(WordFound(word))
+    event_dispatcher.fire_event(ParsingFinished())
 
-    return cleantext, text
+
+def parsetext(args, event_dispatcher):
+    '''read text from file and start parsing'''
+    text = codecs.open(args.textfile, encoding='utf-8').read()
+    _generate_parse_events(text, event_dispatcher)
 
 
 def collectwords(text):
