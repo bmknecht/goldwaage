@@ -22,13 +22,18 @@ class WordOccurrenceCollector(object):
     '''receives call at "found word event"'''
     def __init__(self):
         self.indices_per_word = {}
-        self.word_counter = 0
+        self.index_of_current_word = 0
+
+    def _add_word_occurrence(self, word, word_start_position):
+        if word not in self.indices_per_word:
+            self.indices_per_word[word] = []
+        self.indices_per_word[word].append(
+            (self.index_of_current_word, word_start_position))
 
     def handle_event(self, event):
         '''saves index of given word'''
-        self.indices_per_word.setdefault(event.word.lower(), []).append(
-            self.word_counter)
-        self.word_counter += 1
+        self._add_word_occurrence(event.word.lower(), event.start_position)
+        self.index_of_current_word += 1
 
 
 class WeightedFrequenciesCalculator(object):
@@ -38,9 +43,10 @@ class WeightedFrequenciesCalculator(object):
         self._windowlength = windowlength
         self.words_and_weights = {}
 
-    def _move_window_over_list(self, occurrences):
+    def _move_window_over_occ(self, occurrences, yield_func):
         def _fit_in_window(begin, end):
-            return occurrences[end] - occurrences[begin] < self._windowlength
+            return (occurrences[end][0] - occurrences[begin][0] <
+                    self._windowlength)
 
         def _is_still_in_text(index):
             return index < len(occurrences)
@@ -61,17 +67,37 @@ class WeightedFrequenciesCalculator(object):
                 #Fenster kann nur noch schrumpfen
                 startindex += 1
             if endindex != startindex:
-                yield endindex-startindex
+                yield yield_func(startindex, endindex)
+
+    def _get_sum_of_word_in_all_windows(self, occurrences):
+        return_word_count_in_window = lambda start, end: end - start
+        return sum(
+            self._move_window_over_occ(
+                occurrences, return_word_count_in_window))
+
+    def _get_weights_per_window(self, wordlen, occurrences, weight):
+        return_start_and_end = lambda start, end: (start, end)
+
+        weights = []
+        for start, end in self._move_window_over_occ(
+                occurrences, return_start_and_end):
+            freq = end - start
+            weights.append((
+                (freq - 1) * pow(weight, 5),
+                occurrences[start][1],
+                occurrences[end-1][1] + wordlen
+            ))
+        return weights
+
+    def _calculate_wordweight(self, occurrences):
+        return (float(self._windowlength) /
+                self._get_sum_of_word_in_all_windows(occurrences) * 0.4 + 0.8)
 
     def _get_weighted_frequencies(self):
-        for word, indices in self._collector.indices_per_word.items():
-            freqsum = sum(self._move_window_over_list(indices))
-
-            self.words_and_weights[word] = []
-            for freq in self._move_window_over_list(indices):
-                weight = float(self._windowlength) / freqsum * 0.4 + 0.8
-                self.words_and_weights[word].append(
-                    (freq - 1) * pow(weight, 5))
+        for word, occurrences in self._collector.indices_per_word.items():
+            word_weight = self._calculate_wordweight(occurrences)
+            self.words_and_weights[word] = self._get_weights_per_window(
+                len(word), occurrences, word_weight)
 
     def handle_event(self, _):
         '''reacts to finished-parsing event'''

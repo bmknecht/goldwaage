@@ -4,7 +4,8 @@
 
 <ul>
 {% for word,weight in words_and_frequencies|drop_boring_entries|dictsort(by='value')|reverse %}
-	<li>{{ word }}:{{ weight }}</li>
+	<li>{{ word }}:{{ weight[0] }}
+        <div>{{ weight[1] }}</div></li>
 {% endfor %}
 </ul>
 
