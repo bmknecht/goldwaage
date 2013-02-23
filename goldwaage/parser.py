@@ -20,7 +20,7 @@ class CharToWordCollector(object):
             self.event_dispatcher.fire_event(
                 WordFound(
                     u''.join(self.charlist),
-                    self.end_of_word - len(self.charlist)))
+                    self.end_of_word - len(self.charlist) + 1))
             self.charlist = []
 
     def handle_event(self, event):
