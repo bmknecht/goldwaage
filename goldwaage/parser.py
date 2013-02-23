@@ -1,29 +1,27 @@
 '''parse text for analyzis'''
 
 import codecs
-import StringIO
 
 from goldwaage import events
 
 
 class CharToWordCollector(object):
     def __init__(self, event_dispatcher):
-        self.end_of_word = 0
+        self.charlist = []
         self.event_dispatcher = event_dispatcher
-        self.string_io = StringIO.StringIO()
+        self.end_of_word = 0
 
     def handle_word_char(self, char, position):
-        self.string_io.write(char)
+        self.charlist.append(char)
         self.end_of_word = position
 
     def handle_non_word_char(self):
-        if self.string_io.pos:
+        if self.charlist:
             self.event_dispatcher.fire_event(
                 WordFound(
-                    self.string_io.getvalue(),
-                    self.end_of_word - self.string_io.pos + 1))
-            self.string_io.seek(0)
-            self.string_io.truncate()
+                    u''.join(self.charlist),
+                    self.end_of_word - len(self.charlist) + 1))
+            self.charlist = []
 
     def handle_event(self, event):
         if isinstance(event, CharFound) and event.char.isalnum():
