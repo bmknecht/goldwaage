@@ -73,12 +73,20 @@ class WeightedFrequenciesCalculator(object):
     def _get_weights_per_window(self, wordlen, occurrences, weight):
         return_start_and_end = lambda start, end: (start, end)
 
+        def _get_minimal_distance():
+            distances = []
+            for index in xrange(start, end-1):
+                distances.append(occurrences[index+1][0]-occurrences[index][0])
+            return min(distances) if distances else 0
+
         weights = []
         for start, end in self._move_window_over_occ(
                 occurrences, return_start_and_end):
             freq = end - start
             weights.append((
-                (freq - 1) * pow(weight, 5),
+                (freq * pow(weight, 1) *
+                    pow(float(
+                        _get_minimal_distance()) / self._windowlength, 0.5)),
                 occurrences[start][1],
                 occurrences[end-1][1] + wordlen
             ))
