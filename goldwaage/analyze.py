@@ -1,11 +1,6 @@
 '''analyze text to find mistakes'''
 
 
-import sys
-
-from goldwaage import parser
-
-
 def countwords(text):
     '''return count of each word in text'''
     wordcount = {}
@@ -122,32 +117,3 @@ def get_weighted_frequencies(freqs_per_word, windowwidth):
             wweight[word].append((freq - 1) * pow(weight, 5))
 
     return wweight
-
-
-def get_frequencies_per_word(text, windowlen, steplen):
-    '''computes the count of each word per window'''
-    print('analyzing...')
-
-    splittext = text.lower().split()
-    word_and_frequencies = {
-        word: [] for word in parser.collectwords(text.lower())}
-
-    for i in xrange(0, windowlen+len(splittext), steplen):
-        window = splittext[max(i - windowlen, 0): i]
-        print "\r{p}%".format(
-            p=int(float(i) / (windowlen + len(splittext)) * 100)),
-        sys.stdout.flush()
-        for word, frequencies in word_and_frequencies.items():
-            frequencies.append(window.count(word))
-    print
-    return word_and_frequencies
-
-
-def analyzetext(cleantext, wlength, steplen):
-    '''calls functions to get frequencies per word, and compute the weights'''
-    freqs_per_word = get_frequencies_per_word(
-        cleantext,
-        wlength,
-        steplen)
-
-    return get_weighted_frequencies(freqs_per_word, wlength)

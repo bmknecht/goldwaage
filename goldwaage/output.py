@@ -1,6 +1,7 @@
 '''output of results into html files'''
 
 import codecs
+import StringIO
 
 from jinja2 import Environment, PackageLoader
 
@@ -16,7 +17,7 @@ class SnippetGenerator(object):
         return self._text[startindex:endindex]
 
 
-def __annihilate_zero_weights(words_and_weights):
+def _annihilate_zero_weights(words_and_weights):
     '''delete words with weight < 0'''
     return {
         word: weight_and_snippet
@@ -25,7 +26,39 @@ def __annihilate_zero_weights(words_and_weights):
         if weight_and_snippet[0] > 0}
 
 
-def __generate_wordlist_html(
+def _highlight_word_of_interest(text_snippet, word):
+    def _get_highlighted_word(index):
+        return u'<b>' + text_snippet[index:index+len(word)] + u'</b>'
+
+    def _find_word():
+        def _is_word():
+            return ((index_found == 0 or
+                    not text_snippet[index_found-1].isalnum()) and
+                    (index_found+len(word) >= len(text_snippet) or
+                    not text_snippet[index_found+len(word)].isalnum()))
+
+        index_found_before = 0
+        index_found = text_snippet.lower().find(word)
+        while index_found != -1:
+            if _is_word():
+                yield index_found_before, index_found
+                index_found_before = index_found+len(word)
+            index_found = text_snippet.lower().find(
+                word, index_found+len(word))
+
+    html_string = StringIO.StringIO()
+    for prev_index, index in _find_word():
+        html_string.write(text_snippet[prev_index:index])
+        html_string.write(_get_highlighted_word(index))
+    return html_string.getvalue()
+
+
+def _check_spelling(word, text_with_word):
+    index = text_with_word.lower().find(word)
+    return text_with_word[index:index+len(word)]
+
+
+def _generate_wordlist_html(
         words_and_weighted_frequencies, env, snippet_generator):
     '''write html file with words and weights'''
     get_weight = lambda x: x[0]
@@ -48,6 +81,8 @@ def __generate_wordlist_html(
 def generatehtml(words_and_weighted_frequencies, snippet_generator):
     '''output results as html'''
     env = Environment(loader=PackageLoader('goldwaage', 'templates'))
-    env.filters['drop_boring_entries'] = __annihilate_zero_weights
-    __generate_wordlist_html(
+    env.filters['drop_boring_entries'] = _annihilate_zero_weights
+    env.filters['highlight_word_of_interest'] = _highlight_word_of_interest
+    env.filters['check_spelling'] = _check_spelling
+    _generate_wordlist_html(
         words_and_weighted_frequencies, env, snippet_generator)
